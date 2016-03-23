@@ -6,7 +6,7 @@ import java.util.Queue;
 import java.util.Random;
 
 public class MainActivity {
-	public static double simTime=0, endSimTime=10000;
+	public static double simTime=0, endSimTime=1000;
 	public static Comparator<Event> Comparator = new Comparator<Event>() {
 		@Override
 		public int compare(Event c1, Event c2) {
@@ -18,7 +18,7 @@ public class MainActivity {
 		}
 	};
 	public static Queue<Event> eventList = new PriorityQueue<>(Comparator);
-	
+	public static int roundRobin = 0;
 	public static void main(String[] args)	{
 		
 		/*********** Checks whether the random function actually works!!! *******/
@@ -39,9 +39,17 @@ public class MainActivity {
 //		for (int i = 0; i < Server.numQueue; i++) {
 //			Queues q = new Queues(i, Queues.qSizeUniform, ("Queue_"+i));
 //		}
-		Queues q = new Queues(0, 1000, "Queue_0");
-		eventList.add(new Event(0, 1, 0, "arrive"));
+		createQueue();
+	}
+	
+	public static void createQueue()	{
 		
+		for (int i = 0; i < Server.numQueue; i++) {
+			Queues q = new Queues(i, Queues.qSizeUniform, ("Queue_"+i), new PriorityQueue<Event>(Queues.qSizeUniform, Comparator));
+			Queues.queueList.add(q);
+			eventList.add(new Event(simTime, 0, i, "arriveQueue"));
+			eventList.add(new Event(simTime+getExponential(1/Server.serviceTime), 0, i, "departServer"));
+		}
 	}
 	
 	public static void simulate()	{
@@ -49,9 +57,13 @@ public class MainActivity {
 		while(simTime <= endSimTime)	{
 			e = eventList.poll();
 			switch(e.eventType)	{
-				case "arrive":	arrive(e);
+				case "arriveQueue":		arriveQueue(e);
 				break;
-				case "depart":	depart(e);
+				case "departQueue":		departQueue(e);
+				break;
+				case "arriveServer":	arriveServer(e);
+				break;
+				case "departServer":	departServer(e);
 				break;
 				default :	break;	
 			}
@@ -59,14 +71,28 @@ public class MainActivity {
 		}
 	}
 	
-	public static void arrive(Event e)	{
-//		System.out.println("Packet pid_"+e.packetID+" "+e.eventType+" in Queue "+e.queueID+" at time "+e.timeStamp);
-		eventList.add(new Event(e.timeStamp+getExponential(1/Server.serviceTime), e.packetID, e.queueID, "depart"));
-		eventList.add(new Event(e.timeStamp+getExponential(1/Packets.interArrivalTime), e.packetID+1, e.queueID, "arrive"));
+	public static void arriveQueue(Event e)	{
+//		System.out.println(e.eventType+","+e.packetID+","+e.queueID+","+e.timeStamp);
+		eventList.add(new Event(e.timeStamp+getExponential(1/Queues.interArrivalTime), e.packetID+1, e.queueID, "arriveQueue"));
+		Queues.queueList.get(e.queueID).eventQueue.add(e);
 	}
 	
-	public static void depart(Event e)	{
-		System.out.println("Packet pid_"+e.packetID+" from Queue "+e.queueID+" "+e.eventType+" at time "+e.timeStamp);
+	public static void departQueue(Event e)	{
+//		System.out.println(e.eventType+","+e.packetID+","+e.queueID+","+e.timeStamp);
+		try {
+			Event selectedPacket = Queues.queueList.get(e.queueID).eventQueue.poll();
+			eventList.add(new Event(e.timeStamp, selectedPacket.packetID, e.queueID, "arriveServer"));
+		} catch (NullPointerException e1) {}
+	}
+	
+	public static void arriveServer(Event e)	{
+		System.out.println(e.eventType+","+e.packetID+","+e.queueID+","+e.timeStamp);
+		eventList.add(new Event(e.timeStamp+getExponential(1/Server.serviceTime), e.packetID, e.queueID, "departServer"));
+	}
+	
+	public static void departServer(Event e)	{
+//		System.out.println(e.eventType+","+e.packetID+","+e.queueID+","+e.timeStamp);
+		eventList.add(new Event(e.timeStamp, e.packetID, (roundRobin++%Server.numQueue), "departQueue"));
 	}
 	
 	public static double getExponential(double rand)	{
