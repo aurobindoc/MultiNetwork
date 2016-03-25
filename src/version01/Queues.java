@@ -4,7 +4,7 @@ import java.util.ArrayList;
 import java.util.PriorityQueue;
 
 public class Queues {
-	static double interArrivalTime = 10;
+	static double interArrivalTime = 30;
 	static int qSizeUniform = 1000;
 	int queueID, queueSize;
 	String queueName;
