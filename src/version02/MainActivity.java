@@ -21,6 +21,11 @@ $$ |  $$ |\$$$$$$  |$$ |      \$$$$$$  |       $$$$ $$\       $$$$$$$$\\$$$$$$$ 
 
 public class MainActivity {
 	public static void main(String[] args) throws IOException	{
+		
+		/** Read the 1st line of Input Data File --> Scheduling Policy 
+		 * 		if RR -> call rrMain (RoundRobin)
+		 * 		if RRP -> call rrpMain (RoundRobinPriority)
+		 */
 		File file = new File("inputData.txt");
 		if (!file.exists()) 
 		{
@@ -33,6 +38,8 @@ public class MainActivity {
 		case "RR"	:	RoundRobin.rrMain();
 		break;
 		case "RRP"	:	RoundRobinPriority.rrpMain();
+		break;
+		default :	System.out.println("Please enter correct Scheduling Policy!!!!!");
 		break;
 		}
 	}

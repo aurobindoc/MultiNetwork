@@ -28,20 +28,22 @@ public class RoundRobin {
 	
 	//eventList is a public/global priority queue which contains all the events
 	public static Queue<Event> eventList = new PriorityQueue<>(Comparator);
-	public static int lastServedQ = -1;
+	public static int lastServedQ = -1;	// stores the last queue that is served
 	
 	public static void rrMain() throws IOException	{
+		/****************** Take input from File and initialize variables *******/
 		construct();
 		/****************** Initialize Each Queue & add first packets to the Queues *******/
 		initialize();
 		/****************** The simulation Engine *******************/
 		simulate();
+		/****************** Print the output to a file *******************/
 		printToFile();
 		displayPacketData(); // Display data per packet
 	}
 	
 	public static void construct() throws IOException	{
-		File file = new File("inputData.txt");
+		File file = new File("inputData.txt");	// read input data from file "inputData.txt" 
 		if (!file.exists()) 
 		{
 			System.out.println("Input file not exist");
@@ -75,7 +77,7 @@ public class RoundRobin {
 		int numPack=0;
 		int j=0;
 		
-		FileWriter writer = new FileWriter("output.csv");
+		FileWriter writer = new FileWriter("outputRoundRobin.csv");
 		writer.append("EndSimTime,"+endSimTime+"\nNumber Of Queue,"+Server.numQueue+"\nSize Of Queue,"+Queues.qSizeUniform+"\nMean InterArrival time per Queue,");
 		for (double at : Queues.avgInterArrivalTime) {
 			writer.append(at+",");
@@ -167,12 +169,10 @@ public class RoundRobin {
 	
 	public static void simulate()	{
 		Event e;
-		while(simTime <= endSimTime)	{
-			e = eventList.poll();
+		while(simTime <= endSimTime)	{	// loop until endSimTime
+			e = eventList.poll();	// pops the event with the least time-stamp
 			if(e == null)	continue;
-//			if(e.eventType.equals("arriveServer"))System.out.println(e.timeStamp+" : "+e.eventType+","+e.packetID+","+e.queueID);
-//			if(e.eventType.equals("departServer"))System.out.println(e.packetID+" "+ e.queueID+" " +Packets.packetList.get(e.queueID).get(e.packetID).waitingTime);
-			switch(e.eventType)	{
+			switch(e.eventType)	{	// switch on type of event to call its respective methods
 				case "arriveQueue":		arriveQueue(e);
 				break;
 				case "arriveServer":	arriveServer(e);
@@ -186,16 +186,17 @@ public class RoundRobin {
 	}
 	
 	public static void arriveQueue(Event e)	{
-		double nxtArrival = getExponential(1/Queues.avgInterArrivalTime[e.queueID]);
-		Packets.packetList.get(e.queueID).add(new Packets(e.packetID+1, e.queueID, e.timeStamp+nxtArrival, -1, -1, -1, -1,-1));
+		double nxtArrival = getExponential(1/Queues.avgInterArrivalTime[e.queueID]);	//get the next arrival time
+		Packets.packetList.get(e.queueID).add(new Packets(e.packetID+1, e.queueID, e.timeStamp+nxtArrival, -1, -1, -1, -1,-1));	// add new packet to packetlist
 		
-		e = new Event(e.timeStamp+nxtArrival, e.packetID+1, e.queueID, "arriveQueue");
+		e = new Event(e.timeStamp+nxtArrival, e.packetID+1, e.queueID, "arriveQueue");	// create a new arrival event
 		eventList.add(e);
-		Queues.queueList.get(e.queueID).eventQueue.add(e);
+		Queues.queueList.get(e.queueID).eventQueue.add(e);	// add event to priority queue of its respective Queue
 	}
 	
 	public static void arriveServer(Event e)	{
-		double servTime = getExponential(1/Server.avgServiceTime), totalServTime;
+		double servTime = getExponential(1/Server.avgServiceTime), totalServTime;	//get the service time
+		// if last depart from same Q, then no network switching required
 		if(lastServedQ != -1 && lastServedQ != e.queueID)	{
 			Server.totalNST += Server.networkSwitchingTime;
 			totalServTime = servTime + Server.networkSwitchingTime;
@@ -208,9 +209,9 @@ public class RoundRobin {
 			Packets.packetList.get(e.queueID).get(e.packetID).arrS = e.timeStamp;
 		}
 		lastServedQ = e.queueID;
+		//Update packet parameters
 		Packets.packetList.get(e.queueID).get(e.packetID).waitingTime = e.timeStamp - Packets.packetList.get(e.queueID).get(e.packetID).arrQ;
 		Packets.packetList.get(e.queueID).get(e.packetID).serviceTime = servTime;
-		
 		Packets.packetList.get(e.queueID).get(e.packetID).dprtS = e.timeStamp+totalServTime;
 		Server.busyTime += servTime;
 		eventList.add(new Event(e.timeStamp+totalServTime, e.packetID, e.queueID, "departServer"));
@@ -220,16 +221,20 @@ public class RoundRobin {
 		Server.lastDepart = e.timeStamp;
 		Server.numDepart++;
 		
+		/***************** Schedule NEXT ARRIVAL event *******************/
 		int selctedQ = (e.queueID+1) % Server.numQueue, qTraverse = Server.numQueue;
+		/* qTraverse : counter to ensure all the queue are traversed to find the recent-most packet
+		 * winner : Event that is selected as the next event to schedule
+		 */
 		Event winner = null, recent = null;
 		PriorityQueue<Event> pQ = Queues.queueList.get(selctedQ).eventQueue;
 		while(qTraverse-- > 0)	{
-			if(pQ.isEmpty())	{
+			if(pQ.isEmpty())	{	// if Queue is empty move to next Q
 				selctedQ =  (selctedQ+1)% Server.numQueue;
 				pQ = Queues.queueList.get(selctedQ).eventQueue;
 				continue;
 			}
-			if(pQ.peek().timeStamp <= e.timeStamp)	{
+			if(pQ.peek().timeStamp <= e.timeStamp)	{	// If packet exist in Q take it
 				winner = pQ.poll();
 				break;
 			}
@@ -238,13 +243,14 @@ public class RoundRobin {
 			selctedQ =  (selctedQ+1)% Server.numQueue;
 			pQ = Queues.queueList.get(selctedQ).eventQueue;
 		}
-		if(winner == null)	{
+		if(winner == null)	{	//If no packet before event select the recent-most packet after now time 
 			if(recent == null) return;
 			winner = Queues.queueList.get(recent.queueID).eventQueue.poll();
 		}
 		eventList.add(new Event(winner.timeStamp<e.timeStamp?e.timeStamp:winner.timeStamp, winner.packetID, winner.queueID, "arriveServer"));
 	}
 	
+	/********************** return an random value from an exponential distribution with rate = rand ************************/
 	public static double getExponential(double rand)	{
 		return  Math.log(1-new Random().nextDouble())/(-rand);
 	}
