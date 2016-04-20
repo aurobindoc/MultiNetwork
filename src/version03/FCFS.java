@@ -1,4 +1,4 @@
-package version02;
+package version03;
 
 import java.io.BufferedReader;
 import java.io.File;
@@ -11,7 +11,7 @@ import java.util.PriorityQueue;
 import java.util.Queue;
 import java.util.Random;
 
-public class RoundRobin {
+public class FCFS {
 	public static double simTime = 0, endSimTime = 100;
 	public static String policy = null; 
 	//overload compare operator for a Priority Queue so as to select events based on timeStamp
@@ -30,7 +30,7 @@ public class RoundRobin {
 	public static Queue<Event> eventList = new PriorityQueue<>(Comparator);
 	public static int lastServedQ = -1;	// stores the last queue that is served
 	
-	public static void rrMain() throws IOException	{
+	public static void FCFSMain() throws IOException	{
 		/****************** Take input from File and initialize variables *******/
 		construct();
 		/****************** Initialize Each Queue & add first packets to the Queues *******/
@@ -81,7 +81,7 @@ public class RoundRobin {
 		int numPack=0;
 		int j=0;
 		
-		FileWriter writer = new FileWriter("outputRoundRobin.csv");
+		FileWriter writer = new FileWriter("outputFCFS.csv");
 		writer.append("EndSimTime,"+endSimTime+"\nNumber Of Queue,"+Server.numQueue+"\nSize Of Queue,"+Queues.qSizeUniform+"\nMean InterArrival time per Queue,");
 		for (double at : Queues.avgInterArrivalTime) {
 			writer.append(at+",");
@@ -103,6 +103,8 @@ public class RoundRobin {
 			writer.append("Number of Packets served,"+numPack+"\n");
 			writer.append("Avg. Waiting Time,"+waitTime/numPack+"\n");
 			writer.append("Avg. Response Time,"+resTime/numPack+"\n");
+			writer.append("Throughput per Queue,"+numPack/endSimTime+"\n");
+			writer.append("Number of Packets Droped,"+Queues.packetDroped[j-1]+"\n");
 		}
 		writer.append("\nServer Details\n");
 		writer.append("Server Utilisation,"+Server.busyTime/endSimTime+"\n");
@@ -157,7 +159,7 @@ public class RoundRobin {
 			//initialize packetList ArrayList
 			Packets.packetList.add(new ArrayList<Packets>());
 			//create a Queue object q
-			Queues q = new Queues(i, Queues.qSizeUniform, ("Queue_"+i), new PriorityQueue<Event>(Queues.qSizeUniform, Comparator));
+			Queues q = new Queues(i, Queues.qSizeUniform, ("Queue_"+i), new PriorityQueue<Event>(Comparator));
 			//add the Queue object q to queueList
 			Queues.queueList.add(q);
 			
@@ -200,8 +202,8 @@ public class RoundRobin {
 		}
 		else	{
 			Packets.packetList.get(e.queueID).add(new Packets(e.packetID+1, e.queueID, e.timeStamp+nxtArrival, -1, -1, -1, -1,-1));	// add new packet to packetlist
-			Queues.queueList.get(e.queueID).eventQueue.add(e);	// add event to priority queue of its respective Queue
 			e = new Event(e.timeStamp+nxtArrival, e.packetID+1, e.queueID, "arriveQueue");	// create a new arrival event
+			Queues.queueList.get(e.queueID).eventQueue.add(e);	// add event to priority queue of its respective Queue
 			eventList.add(e);
 		}
 		
@@ -231,35 +233,21 @@ public class RoundRobin {
 	}
 	
 	public static void departServer(Event e)	{
-		Server.lastDepart = e.timeStamp;
 		Server.numDepart++;
 		
 		/***************** Schedule NEXT ARRIVAL event *******************/
-		int selctedQ = (e.queueID+1) % Server.numQueue, qTraverse = Server.numQueue;
-		/* qTraverse : counter to ensure all the queue are traversed to find the recent-most packet
-		 * winner : Event that is selected as the next event to schedule
-		 */
-		Event winner = null, recent = null;
-		PriorityQueue<Event> pQ = Queues.queueList.get(selctedQ).eventQueue;
-		while(qTraverse-- > 0)	{
-			if(pQ.isEmpty())	{	// if Queue is empty move to next Q
-				selctedQ =  (selctedQ+1)% Server.numQueue;
-				pQ = Queues.queueList.get(selctedQ).eventQueue;
-				continue;
+		double min = Integer.MAX_VALUE;
+		int selctedQ=0;
+		Event winner = null;
+		
+		for (int i = 0; i < Server.numQueue; i++) {
+			if(!Queues.queueList.get(i).eventQueue.isEmpty() && Queues.queueList.get(i).eventQueue.peek().timeStamp < min)	{
+				min = Queues.queueList.get(i).eventQueue.peek().timeStamp;
+				selctedQ = i;
 			}
-			if(pQ.peek().timeStamp <= e.timeStamp)	{	// If packet exist in Q take it
-				winner = pQ.poll();
-				break;
-			}
-			
-			recent = (recent == null || pQ.peek().timeStamp < recent.timeStamp) ? pQ.peek() : recent; 
-			selctedQ =  (selctedQ+1)% Server.numQueue;
-			pQ = Queues.queueList.get(selctedQ).eventQueue;
 		}
-		if(winner == null)	{	//If no packet before event select the recent-most packet after now time 
-			if(recent == null) return;
-			winner = Queues.queueList.get(recent.queueID).eventQueue.poll();
-		}
+		
+		winner = Queues.queueList.get(selctedQ).eventQueue.poll();
 		eventList.add(new Event(winner.timeStamp<e.timeStamp?e.timeStamp:winner.timeStamp, winner.packetID, winner.queueID, "arriveServer"));
 	}
 	

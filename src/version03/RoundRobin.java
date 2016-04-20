@@ -1,4 +1,4 @@
-package version02;
+package version03;
 
 import java.io.BufferedReader;
 import java.io.File;
@@ -103,6 +103,8 @@ public class RoundRobin {
 			writer.append("Number of Packets served,"+numPack+"\n");
 			writer.append("Avg. Waiting Time,"+waitTime/numPack+"\n");
 			writer.append("Avg. Response Time,"+resTime/numPack+"\n");
+			writer.append("Throughput per Queue,"+numPack/endSimTime+"\n");
+			writer.append("Number of Packets Droped,"+Queues.packetDroped[j-1]+"\n");
 		}
 		writer.append("\nServer Details\n");
 		writer.append("Server Utilisation,"+Server.busyTime/endSimTime+"\n");
@@ -200,8 +202,8 @@ public class RoundRobin {
 		}
 		else	{
 			Packets.packetList.get(e.queueID).add(new Packets(e.packetID+1, e.queueID, e.timeStamp+nxtArrival, -1, -1, -1, -1,-1));	// add new packet to packetlist
-			Queues.queueList.get(e.queueID).eventQueue.add(e);	// add event to priority queue of its respective Queue
 			e = new Event(e.timeStamp+nxtArrival, e.packetID+1, e.queueID, "arriveQueue");	// create a new arrival event
+			Queues.queueList.get(e.queueID).eventQueue.add(e);	// add event to priority queue of its respective Queue
 			eventList.add(e);
 		}
 		

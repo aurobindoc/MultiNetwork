@@ -1,0 +1,18 @@
+Input Format is specified as :
+
+Algorithm (Round Robin,Round Robin-Priority) (RR,RRP)
+Sim time
+Number of queues\data streams
+Queue size\buffer size for each stream (same for every queue)
+Average Arrival rate of Queue\data stream #1, #2, ……, #n
+Average Service time\time taken to send a packet (same for every stream)
+Network Switching time
+
+RRP //algorithm
+100 //sim time
+4 //no of queues
+100 //size of queues
+5,7,8,9 // average packet inter-arrival time at each queue
+4 // average time to send a packet / service time
+3 // network switching time
+2,1,4,3 //no of packets taken from each queue at a time  (Optional, required only for RRP)

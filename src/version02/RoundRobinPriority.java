@@ -101,6 +101,43 @@ public class RoundRobinPriority {
 		int numPack=0;
 		int j=0;
 		
+		FileWriter writer = new FileWriter("outputRoundRobin.csv");
+		writer.append("EndSimTime,"+endSimTime+"\nNumber Of Queue,"+Server.numQueue+"\nSize Of Queue,"+Queues.qSizeUniform+"\nMean InterArrival time per Queue,");
+		for (double at : Queues.avgInterArrivalTime) {
+			writer.append(at+",");
+		}
+		writer.append("\nService Time,"+Server.avgServiceTime+"\nNetwork Switching Time,"+Server.networkSwitchingTime+"\nScheduling Policy,"+policy+"\n");
+		for (ArrayList<Packets> pac : Packets.packetList) {
+			writer.append("\nQueue "+(j++)+"\n\n");
+			writer.append("QueueID,PacketID,ArriveQ,nsTime,ArriveServer,DepartServer,WaitingTime,ServiceTime,ResponseTime\n");
+			waitTime=0;
+			resTime=0;
+			numPack=0;
+			for (Packets p : pac) {
+				if(p.arrS == -1 || p.dprtS == -1)	break;
+				writer.append(p.queueID+","+p.packetID+","+p.arrQ+","+p.nsTime+","+p.arrS+","+p.dprtS+","+p.waitingTime+","+p.serviceTime+","+(p.waitingTime+p.serviceTime+p.nsTime)+"\n");
+				waitTime+=p.waitingTime;
+				resTime+=p.serviceTime+p.waitingTime+p.nsTime;
+				numPack++;
+			}
+			writer.append("Number of Packets served,"+numPack+"\n");
+			writer.append("Avg. Waiting Time,"+waitTime/numPack+"\n");
+			writer.append("Avg. Response Time,"+resTime/numPack+"\n");
+			writer.append("Throughput per Queue,"+numPack/endSimTime+"\n");
+			writer.append("Number of Packets Droped,"+Queues.packetDroped[j-1]+"\n");
+		}
+		writer.append("\nServer Details\n");
+		writer.append("Server Utilisation,"+Server.busyTime/endSimTime+"\n");
+		writer.append("Throughput,"+Server.numDepart/endSimTime+"\n");
+		writer.append("Total Network Switching Time,"+Server.totalNST+"\n");
+		writer.close();
+	}
+	
+	public static void printToFile1() throws IOException {
+		double waitTime=0, resTime=0;
+		int numPack=0;
+		int j=0;
+		
 		FileWriter writer = new FileWriter("outputRoundRobinPriority.csv");
 		writer.append("EndSimTime,"+endSimTime+"\nNumber Of Queue,"+Server.numQueue+"\nSize Of Queue,"+Queues.qSizeUniform+"\nMean InterArrival time per Queue,");
 		for (double at : Queues.avgInterArrivalTime) {
@@ -136,6 +173,36 @@ public class RoundRobinPriority {
 		writer.close();
 	}
 	
+	public static void displayPacketData1() throws IOException {
+		double waitTime=0, resTime=0;
+		int numPack=0;
+		int j=0;
+		
+		for (ArrayList<Packets> pac : Packets.packetList) {
+			System.out.println("Queue "+(j++)+"\n");
+			System.out.println("QueueID,PacketID,ArriveQ,nsTime,ArriveServer,DepartServer,WaitingTime,ServiceTime,ResponseTime");
+			 waitTime=0;
+			 resTime=0;
+			 numPack=0;
+			for (Packets p : pac) {
+				if(p.arrS == -1 || p.dprtS == -1)	break;
+				System.out.println(p.queueID+","+p.packetID+","+p.arrQ+","+p.nsTime+","+p.arrS+","+p.dprtS+","+p.waitingTime+","+p.serviceTime+","+(p.waitingTime+p.serviceTime+p.nsTime));
+				waitTime+=p.waitingTime;
+				resTime+=p.serviceTime+p.waitingTime+p.nsTime;
+				numPack++;
+			}
+			System.out.println();
+			System.out.println("Number of Packets served,"+numPack);
+			System.out.println("Avg. Waiting Time,"+waitTime/numPack);
+			System.out.println("Avg. Response Time,"+resTime/numPack);
+			System.out.println();
+		}
+		System.out.println("Server Details\n");
+		System.out.println("Server Utilisation,"+Server.busyTime/endSimTime);
+		System.out.println("Throughput,"+Server.numDepart/endSimTime);
+		System.out.println("Total Network Switching Time,"+Server.totalNST);
+	}
+	
 	public static void displayPacketData() throws IOException {
 		double waitTime=0, resTime=0;
 		int numPack=0;
@@ -158,6 +225,8 @@ public class RoundRobinPriority {
 			System.out.println("Number of Packets served,"+numPack);
 			System.out.println("Avg. Waiting Time,"+waitTime/numPack);
 			System.out.println("Avg. Response Time,"+resTime/numPack);
+			System.out.println("Throughput per Queue,"+numPack/endSimTime);
+			System.out.println("Number of Packets Droped,"+Queues.packetDroped[j-1]);
 			System.out.println();
 		}
 		System.out.println("Server Details\n");
@@ -217,7 +286,7 @@ public class RoundRobinPriority {
 		}
 	}
 	
-	public static void arriveQueue(Event e)	{
+	public static void arriveQueue1(Event e)	{
 		double nxtArrival = getExponential(1/Queues.avgInterArrivalTime[e.queueID]); //get the next arrival time
 		Packets.packetList.get(e.queueID).add(new Packets(e.packetID+1, e.queueID, e.timeStamp+nxtArrival, -1, -1, -1, -1,-1)); // add new packet to packetlist
 		
@@ -225,6 +294,23 @@ public class RoundRobinPriority {
 		eventList.add(e);	// add event to eventlist
 		Queues.queueList.get(e.queueID).eventQueue.add(e);	// add event to priority queue of its respective Queue
 	}
+	
+	public static void arriveQueue(Event e)	{
+		double nxtArrival = getExponential(1/Queues.avgInterArrivalTime[e.queueID]);	//get the next arrival time
+		if(Queues.queueList.get(e.queueID).eventQueue.size() >= Queues.qSizeUniform)	{
+			Queues.packetDroped[e.queueID]++;
+			e = new Event(e.timeStamp+nxtArrival, e.packetID, e.queueID, "arriveQueue");	// create a new arrival event
+			eventList.add(e);
+		}
+		else	{
+			Packets.packetList.get(e.queueID).add(new Packets(e.packetID+1, e.queueID, e.timeStamp+nxtArrival, -1, -1, -1, -1,-1));	// add new packet to packetlist
+			Queues.queueList.get(e.queueID).eventQueue.add(e);	// add event to priority queue of its respective Queue
+			e = new Event(e.timeStamp+nxtArrival, e.packetID+1, e.queueID, "arriveQueue");	// create a new arrival event
+			eventList.add(e);
+		}
+		
+	}
+	
 	
 	public static void arriveServer(Event e)	{
 		double servTime = getExponential(1/Server.avgServiceTime), totalServTime;	//get the service time
