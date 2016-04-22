@@ -1,4 +1,4 @@
-package version03;
+package version04;
 
 import java.io.BufferedReader;
 import java.io.File;
@@ -35,70 +35,70 @@ public class WeightedFairQueueing {
 	/* q2bServed is the Queue which is being served
 	 * pckQ is the number of packets left to be served from that queue based on priority */
 	public static int q2bServed = -1, pckQ = -1;
-	
+	public static ArrayList<ArrayList<Integer>> pr;
 	public static void wfqMain() throws IOException	{
-		int sum =0;
-		for (int i = 0; i < 1000; i++) {
-			sum+=(uniform(20,70));
-//			sum += (getServiceTimeGeneral(0.1, 0.2, 0.7));
-//			sum += getGeometric(0.1);
-		}
-		System.out.println((double)sum/1000);
-//		/****************** Take input from File and initialize variables *******/
-//		construct();
-//		/****************** Initialize Each Queue & add first packets to the Queues *******/
-//		initialize();
-//		/****************** The simulation Engine *******************/
-//		simulate();
-//		/****************** Print the output to a file *******************/
-//		printToFile();
-//		displayPacketData(); // Display data per packet
-//		
+		
+		/****************** Take input from File and initialize variables *******/
+		construct();
+		/****************** Initialize Each Queue & add first packets to the Queues *******/
+		initialize();
+		/****************** The simulation Engine *******************/
+		simulate();
+		/****************** Print the output to a file *******************/
+		displayPacketData(); // Display data per packet
+		printToFile();
 	}
 	
 	public static void construct() throws IOException	{
-		File file = new File("inputData.txt"); // read input data from file "inputData.txt" 
+		File file = new File("inputData.txt");	// read input data from file "inputData.txt" 
 		if (!file.exists()) 
 		{
 			System.out.println("Input file not exist");
 			System.exit(0);
 		}
-		
 		@SuppressWarnings("resource")
 		BufferedReader br = new BufferedReader(new FileReader(file));
 		int i=0;
 		String[] value;
-		policy = br.readLine();
-		endSimTime = Double.parseDouble(br.readLine());
-		Server.numQueue = Integer.parseInt(br.readLine());
-		Queues.qSizeUniform = Integer.parseInt(br.readLine());
-		value = br.readLine().split(",");
-		for (String v : value) {
-			Queues.avgInterArrivalTime[i++] = Double.parseDouble(v);
-		}
-		Server.avgServiceTime = Double.parseDouble(br.readLine());
-		Server.networkSwitchingTime = Double.parseDouble(br.readLine());
 		
-		if(policy.equals("RRP"))	{
+		try {
+			policy = br.readLine();
+			endSimTime = Double.parseDouble(br.readLine());
+			Server.numQueue = Integer.parseInt(br.readLine());
+			Queues.qSizeUniform = Integer.parseInt(br.readLine());
+			value = br.readLine().split(",");
+			for (String v : value) {
+				Queues.avgInterArrivalTime[i++] = Double.parseDouble(v);
+			}
+			Server.avgTxTime = Double.parseDouble(br.readLine());
+			Server.avgRxTime = Double.parseDouble(br.readLine());
+			
 			i=0;
 			value = br.readLine().split(",");
 			for (String v : value) {
-				Queues.priority[i++] = Integer.parseInt(v);
+				Queues.errorProb[i] = Double.parseDouble(v);
 			}
-		}
-		else	{
-			for (i=0; i<Server.numQueue; i++) {
-				Queues.priority[i++] = 1;
+			
+			value = br.readLine().split("-");
+			Server.nstMin = Integer.parseInt(value[0]);
+			Server.nstMax = Integer.parseInt(value[1]);
+			
+			/*System.out.print("EndSimTime,"+endSimTime+"\nNumber Of Queue,"+Server.numQueue+"\nSize Of Queue,"+Queues.qSizeUniform+"\nMean InterArrival time per Queue,");
+			for (double at : Queues.avgInterArrivalTime) {
+				System.out.print(at+",");
 			}
+			System.out.println("\nAvg Transmit Time,"+Server.avgTxTime+",Avg RecieveACK Time,"+Server.avgRxTime+"\nNetwork Switching Time,"+Server.nstMin+"-"+Server.nstMax+"\nScheduling Policy,"+policy);
+			System.out.println();*/
+		} catch (NullPointerException e) {
+			System.out.println("There's some problem with your input data. Please check it!!!");
+			System.exit(0);
 		}
 		
-		System.out.print("EndSimTime,"+endSimTime+"\nNumber Of Queue,"+Server.numQueue+"\nSize Of Queue,"+Queues.qSizeUniform+"\nMean InterArrival time per Queue,");
-		for (double at : Queues.avgInterArrivalTime) {
-			System.out.print(at+",");
+		pr = new ArrayList<ArrayList<Integer>>(Server.numQueue);
+		for (int j = 0; j < Server.numQueue; j++) {
+			pr.add(new ArrayList<Integer>());
+			Queues.packetDroped[j]=0;
 		}
-		System.out.println();
-		System.out.print("\nService Time,"+Server.avgServiceTime+"\nNetwork Switching Time,"+Server.networkSwitchingTime+"\nScheduling Policy,"+policy+"\n");
-		System.out.println();
 	}
 	
 	public static void printToFile() throws IOException {
@@ -106,12 +106,13 @@ public class WeightedFairQueueing {
 		int numPack=0;
 		int j=0;
 		
-		FileWriter writer = new FileWriter("outputWFQ.csv");
+		FileWriter writer = new FileWriter(MainActivity.opFile);
 		writer.append("EndSimTime,"+endSimTime+"\nNumber Of Queue,"+Server.numQueue+"\nSize Of Queue,"+Queues.qSizeUniform+"\nMean InterArrival time per Queue,");
 		for (double at : Queues.avgInterArrivalTime) {
 			writer.append(at+",");
 		}
-		writer.append("\nService Time,"+Server.avgServiceTime+"\nNetwork Switching Time,"+Server.networkSwitchingTime+"\nScheduling Policy,"+policy+"\n");
+		writer.append("\nAvg Transmit Time,"+Server.avgTxTime+",Avg RecieveACK Time,"+Server.avgRxTime+"\nNetwork Switching Time,"+Server.nstMin+"-"+Server.nstMax+"\nScheduling Policy,"+policy);
+
 		for (ArrayList<Packets> pac : Packets.packetList) {
 			writer.append("\nQueue "+(j++)+"\n\n");
 			writer.append("QueueID,PacketID,ArriveQ,nsTime,ArriveServer,DepartServer,WaitingTime,ServiceTime,ResponseTime\n");
@@ -135,40 +136,42 @@ public class WeightedFairQueueing {
 		writer.append("Server Utilisation,"+Server.busyTime/endSimTime+"\n");
 		writer.append("Throughput,"+Server.numDepart/endSimTime+"\n");
 		writer.append("Total Network Switching Time,"+Server.totalNST+"\n");
+		writer.append("\nPriority\n");
+		for (ArrayList<Integer> p : pr) {
+			for (int pt : p) {
+				writer.append(pt+",");
+			}
+			writer.append("\n");
+		}
 		writer.close();
 	}
 	
 		
 	public static void displayPacketData() throws IOException {
-		double waitTime=0, resTime=0;
-		int numPack=0;
+		double waitTime=0, AvgWaitTime=0, resTime=0, AvgResTime=0, AvgErrorProb=0, TotIATime=0;
+		int numPack=0,TotNumPack=0,TotDropped=0;
 		int j=0;
 		
 		for (ArrayList<Packets> pac : Packets.packetList) {
-			System.out.println("Queue "+(j++)+"\n");
-			System.out.println("QueueID,PacketID,ArriveQ,nsTime,ArriveServer,DepartServer,WaitingTime,ServiceTime,ResponseTime");
 			 waitTime=0;
 			 resTime=0;
 			 numPack=0;
 			for (Packets p : pac) {
 				if(p.arrS == -1 || p.dprtS == -1)	break;
-				System.out.println(p.queueID+","+p.packetID+","+p.arrQ+","+p.nsTime+","+p.arrS+","+p.dprtS+","+p.waitingTime+","+p.serviceTime+","+(p.waitingTime+p.serviceTime+p.nsTime));
 				waitTime+=p.waitingTime;
 				resTime+=p.serviceTime+p.waitingTime+p.nsTime;
 				numPack++;
 			}
-			System.out.println();
-			System.out.println("Number of Packets served,"+numPack);
-			System.out.println("Avg. Waiting Time,"+waitTime/numPack);
-			System.out.println("Avg. Response Time,"+resTime/numPack);
-			System.out.println("Throughput per Queue,"+numPack/endSimTime);
-			System.out.println("Number of Packets Droped,"+Queues.packetDroped[j-1]);
-			System.out.println();
+			TotNumPack += numPack;
+			AvgWaitTime += waitTime/numPack;
+			AvgResTime += resTime/numPack;
+			TotDropped += Queues.packetDroped[j];
+			AvgErrorProb += Queues.errorProb[j];
+			TotIATime += Queues.avgInterArrivalTime[j];
+			System.out.println(j+","+Queues.avgInterArrivalTime[j]+","+Queues.errorProb[j]+","+numPack+","+waitTime/numPack+","+resTime/numPack+","+numPack/endSimTime+","+Queues.packetDroped[j]);
+			j++;
 		}
-		System.out.println("Server Details\n");
-		System.out.println("Server Utilisation,"+Server.busyTime/endSimTime);
-		System.out.println("Throughput,"+Server.numDepart/endSimTime);
-		System.out.println("Total Network Switching Time,"+Server.totalNST);
+		System.out.println("Avg,"+TotIATime+","+(AvgErrorProb/j)+","+TotNumPack+","+(AvgWaitTime/j)+","+(AvgResTime/j)+","+TotDropped+","+Server.busyTime/endSimTime+","+Server.numDepart/endSimTime+","+Server.totalNST);
 	}
 	
 	public static void initialize()	{
@@ -236,20 +239,15 @@ public class WeightedFairQueueing {
 		for (int i : qSize) {
 			max = max<i?i:max;
 			min = min>i?i:min;
-//			System.out.print(i+" ");
 		}
 		maxPrio = (max-min)==0?1:(max-min)>15?15:max-min;
-//		System.out.println(sum+" "+maxPrio);
 		for (int i = 0; i < Server.numQueue; i++) {
 			prio = ((double)qSize[i]*maxPrio)/sum;
-//			System.out.print(prio+" ");
 			Queues.priority[i] = (prio>0&&prio<1)?1:(int)prio;
 		}
-//		System.out.println();
-		for (int i : Queues.priority) {
-			System.out.print(i+" ");
+		for (int i = 0; i < Queues.priority.length; i++) {
+			pr.get(i).add(Queues.priority[i]);
 		}
-		System.out.println();
 	}
 	
 	public static void arriveQueue(Event e)	{
@@ -270,13 +268,14 @@ public class WeightedFairQueueing {
 	
 	
 	public static void arriveServer(Event e)	{
-		double servTime = getExponential(1/Server.avgServiceTime), totalServTime;	//get the service time
+		double servTime = getServiceTimeGeneral(e.queueID), nst, totalServTime;	//get the service time
 		// if last depart from same Q, then no network switching required
-		if(lastServedQ != -1 && lastServedQ != e.queueID)	{	
-			Server.totalNST += Server.networkSwitchingTime;
-			totalServTime = servTime + Server.networkSwitchingTime;
-			Packets.packetList.get(e.queueID).get(e.packetID).nsTime = Server.networkSwitchingTime;
-			Packets.packetList.get(e.queueID).get(e.packetID).arrS = e.timeStamp+Server.networkSwitchingTime;
+		if(lastServedQ != -1 && lastServedQ != e.queueID)	{
+			nst = uniform(Server.nstMin, Server.nstMax);
+			Server.totalNST += nst;
+			totalServTime = servTime + nst;
+			Packets.packetList.get(e.queueID).get(e.packetID).nsTime = nst;
+			Packets.packetList.get(e.queueID).get(e.packetID).arrS = e.timeStamp+nst;
 		}
 		else	{
 			totalServTime = servTime;
@@ -354,11 +353,11 @@ public class WeightedFairQueueing {
 		return min + (max - min) * uniform();
 	}
 	
-	public static double getServiceTimeGeneral(double s1, double s2, double p)	{
-		int N = getGeometric(p);
+	public static double getServiceTimeGeneral(int queueID)	{
+		int N = getGeometric(1-Queues.errorProb[queueID]);
 		double sum=0;
 		for (int i = 0; i < N; i++) {
-			sum += getExponential(s1)+getExponential(s2);
+			sum += getExponential(Server.avgTxTime)+getExponential(Server.avgRxTime);
 		}
 		return sum;
 	}
