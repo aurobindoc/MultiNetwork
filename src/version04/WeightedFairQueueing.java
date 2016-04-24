@@ -68,20 +68,20 @@ public class WeightedFairQueueing {
 			Queues.qSizeUniform = Integer.parseInt(br.readLine());
 			value = br.readLine().split(",");
 			for (String v : value) {
-				Queues.avgInterArrivalTime[i++] = Double.parseDouble(v);
+				Queues.avgInterArrivalTime[i++] = 1/Double.parseDouble(v);
 			}
-			Server.avgTxTime = Double.parseDouble(br.readLine());
-			Server.avgRxTime = Double.parseDouble(br.readLine());
+			Server.avgTxTime = 1/Double.parseDouble(br.readLine());
+			Server.avgRxTime = 1/Double.parseDouble(br.readLine());
 			
 			i=0;
 			value = br.readLine().split(",");
 			for (String v : value) {
-				Queues.errorProb[i] = Double.parseDouble(v);
+				Queues.errorProb[i++] = Double.parseDouble(v);
 			}
 			
 			value = br.readLine().split("-");
-			Server.nstMin = Integer.parseInt(value[0]);
-			Server.nstMax = Integer.parseInt(value[1]);
+			Server.nstMin = Double.parseDouble(value[0]);
+			Server.nstMax = Double.parseDouble(value[1]);
 			
 			/*System.out.print("EndSimTime,"+endSimTime+"\nNumber Of Queue,"+Server.numQueue+"\nSize Of Queue,"+Queues.qSizeUniform+"\nMean InterArrival time per Queue,");
 			for (double at : Queues.avgInterArrivalTime) {
@@ -349,7 +349,7 @@ public class WeightedFairQueueing {
 		return new Random().nextDouble();
 	}
 	
-	public static double uniform(int max, int min)	{
+	public static double uniform(double max, double min)	{
 		return min + (max - min) * uniform();
 	}
 	
@@ -357,7 +357,7 @@ public class WeightedFairQueueing {
 		int N = getGeometric(1-Queues.errorProb[queueID]);
 		double sum=0;
 		for (int i = 0; i < N; i++) {
-			sum += getExponential(Server.avgTxTime)+getExponential(Server.avgRxTime);
+			sum += getExponential(1/Server.avgTxTime)+getExponential(1/Server.avgRxTime);
 		}
 		return sum;
 	}
