@@ -284,18 +284,22 @@ public class RoundRobin {
 		return  Math.log(1-uniform())/(-rand);
 	}
 	
+	/********************** return an random value from an geometric distribution with probOfSuccess = prob ************************/
 	public static int getGeometric(double prob)	{
 		return (int) Math.ceil(Math.log(uniform()) / Math.log(1.0 - prob));
 	}
 	
+	/********************** return an random value from an uniform distribution with random parameter ************************/
 	public static double uniform()	{
 		return new Random().nextDouble();
 	}
 	
+	/********************** return an random value from an uniform distribution between min and max ************************/
 	public static double uniform(double max, double min)	{
 		return min + (max - min) * uniform();
 	}
 	
+	/********************** return the random service time from a general distribution of exponential and geometric ************************/
 	public static double getServiceTimeGeneral(int queueID)	{
 		int N = getGeometric(1-Queues.errorProb[queueID]);
 		double sum=0;
